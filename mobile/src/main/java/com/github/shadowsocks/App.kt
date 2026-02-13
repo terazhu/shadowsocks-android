@@ -21,14 +21,29 @@
 package com.github.shadowsocks
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
+import com.github.shadowsocks.utils.Action
 
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Core.init(this, MainActivity::class)
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
+        val screenReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: Intent) {
+                if (intent.action == Intent.ACTION_SCREEN_OFF) {
+                    Core.stopService()
+                    sendBroadcast(Intent(Action.ABORT).setPackage(packageName))
+                }
+            }
+        }
+        ContextCompat.registerReceiver(this, screenReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF),
+            ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

@@ -110,6 +110,14 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+        <receiver
+            android:name="com.github.shadowsocks.ExternalAccessReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.github.shadowsocks.EXTERNAL_ALLOW_ONCE"/>
+                <action android:name="com.github.shadowsocks.EXTERNAL_ALLOW_ALWAYS"/>
+            </intent-filter>
+        </receiver>
 
         <activity android:name="com.google.android.gms.oss.licenses.OssLicensesActivity"
                   android:theme="@style/Theme.Shadowsocks.ActionBar"/>

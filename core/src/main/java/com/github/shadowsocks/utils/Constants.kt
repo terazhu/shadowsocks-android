@@ -65,6 +65,9 @@ object Key {
     const val dirty = "profileDirty"
 
     const val assetUpdateTime = "assetUpdateTime"
+    const val externalAccessAlways = "externalAccessAlways"
+    const val externalAccessUntil = "externalAccessUntil"
+    const val externalAccessLastPrompt = "externalAccessLastPrompt"
 
     // TV specific values
     const val controlStats = "control.stats"
@@ -79,6 +82,8 @@ object Action {
     const val CLOSE = "com.github.shadowsocks.CLOSE"
     const val RELOAD = "com.github.shadowsocks.RELOAD"
     const val ABORT = "com.github.shadowsocks.ABORT"
+    const val EXTERNAL_ALLOW_ONCE = "com.github.shadowsocks.EXTERNAL_ALLOW_ONCE"
+    const val EXTERNAL_ALLOW_ALWAYS = "com.github.shadowsocks.EXTERNAL_ALLOW_ALWAYS"
 
     const val EXTRA_PROFILE_ID = "com.github.shadowsocks.EXTRA_PROFILE_ID"
 }

@@ -1,5 +1,6 @@
 package com.github.shadowsocks
 
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -18,6 +19,8 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import android.text.format.Formatter
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.github.shadowsocks.aidl.IShadowsocksService
 import com.github.shadowsocks.aidl.ShadowsocksConnection
 import com.github.shadowsocks.aidl.TrafficStats
@@ -34,6 +37,7 @@ import java.io.IOException
 import java.sql.SQLException
 
 class FloatingIconService : Service(), ShadowsocksConnection.Callback {
+    private val notificationId = 2002
     private val connection = ShadowsocksConnection()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var state = BaseService.State.Stopped
@@ -57,6 +61,14 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
 
     override fun onCreate() {
         super.onCreate()
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        val canNotify = Build.VERSION.SDK_INT < 24 || notificationManager?.areNotificationsEnabled() != false
+        if (canNotify) {
+            try {
+                startForeground(notificationId, buildNotification())
+            } catch (_: Throwable) {
+            }
+        }
         windowManager = getSystemService(WindowManager::class.java)
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -158,6 +170,10 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
         connection.connect(this, this)
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
+    }
+
     override fun onDestroy() {
         connection.bandwidthTimeout = 0
         if (sessionActive) endSessionTracking()
@@ -168,6 +184,7 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
         statsView = null
         params = null
         windowManager = null
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
@@ -178,9 +195,14 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
         updateIcon()
         when (state) {
             BaseService.State.Connected -> startSessionTracking()
-            BaseService.State.Stopped -> endSessionTracking()
+            BaseService.State.Stopped -> {
+                lastStats = TrafficStats()
+                endSessionTracking()
+                updateStats()
+            }
             else -> {}
         }
+        updateStats()
     }
 
     override fun trafficUpdated(profileId: Long, stats: TrafficStats) {
@@ -238,6 +260,18 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
             view.text = ""
         }
     }
+
+    private fun buildNotification() = NotificationCompat.Builder(this, "service-floating")
+        .setWhen(0)
+        .setContentTitle(getString(R.string.floating_mode))
+        .setContentText(getString(R.string.floating_notification))
+        .setContentIntent(Core.configureIntent(this))
+        .setSmallIcon(R.drawable.ic_service_active)
+        .setOngoing(true)
+        .setOnlyAlertOnce(true)
+        .setCategory(NotificationCompat.CATEGORY_SERVICE)
+        .setPriority(NotificationCompat.PRIORITY_MIN)
+        .build()
 
     private fun openMain() {
         val intent = Intent(this, MainActivity::class.java).apply {

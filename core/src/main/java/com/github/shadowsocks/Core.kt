@@ -39,6 +39,7 @@ import android.os.UserManager
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import androidx.core.os.persistableBundleOf
@@ -55,6 +56,7 @@ import com.github.shadowsocks.utils.DeviceStorageApp
 import com.github.shadowsocks.utils.DirectBoot
 import com.github.shadowsocks.utils.Key
 import com.google.firebase.FirebaseApp
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.DEBUG_PROPERTY_NAME
 import kotlinx.coroutines.DEBUG_PROPERTY_VALUE_ON
@@ -64,6 +66,9 @@ import java.io.IOException
 import kotlin.reflect.KClass
 
 object Core {
+    const val externalAccessNotificationId = 2004
+    private const val externalAccessAllowWindowMs = 10 * 60 * 1000L
+    private const val externalAccessPromptIntervalMs = 60 * 1000L
     lateinit var app: Application
         @VisibleForTesting set
     lateinit var configureIntent: (Context) -> PendingIntent
@@ -117,14 +122,19 @@ object Core {
         System.setProperty(DEBUG_PROPERTY_NAME, DEBUG_PROPERTY_VALUE_ON)
         FirebaseApp.initializeApp(deviceStorage)  // multiple processes needs manual set-up
         FirebaseCrashlytics.getInstance().setCustomKey("build", Build.DISPLAY)
+        updateExternalAccessCollection(isExternalAccessAllowed())
         Timber.plant(object : Timber.DebugTree() {
             override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
                 if (t == null) {
                     if (priority != Log.DEBUG || BuildConfig.DEBUG) Log.println(priority, tag, message)
-                    FirebaseCrashlytics.getInstance().log("${"XXVDIWEF".getOrElse(priority) { 'X' }}/$tag: $message")
+                    if (isExternalAccessAllowed()) {
+                        FirebaseCrashlytics.getInstance().log("${"XXVDIWEF".getOrElse(priority) { 'X' }}/$tag: $message")
+                    }
                 } else {
                     if (priority >= Log.WARN || priority == Log.DEBUG) Log.println(priority, tag, message)
-                    if (priority >= Log.INFO) FirebaseCrashlytics.getInstance().recordException(t)
+                    if (priority >= Log.INFO && isExternalAccessAllowed()) {
+                        FirebaseCrashlytics.getInstance().recordException(t)
+                    }
                 }
             }
         })
@@ -157,6 +167,10 @@ object Core {
                             NotificationManager.IMPORTANCE_LOW),
                     NotificationChannel("service-transproxy", app.getText(R.string.service_transproxy),
                             NotificationManager.IMPORTANCE_LOW),
+                    NotificationChannel("external-access", app.getText(R.string.external_access_title),
+                            NotificationManager.IMPORTANCE_HIGH),
+                    NotificationChannel("service-floating", app.getText(R.string.service_floating),
+                            NotificationManager.IMPORTANCE_MIN),
                     SubscriptionService.notificationChannel))
             notification.deleteNotificationChannel("service-nat")   // NAT mode is gone for good
         }
@@ -181,4 +195,53 @@ object Core {
     fun startService() = ContextCompat.startForegroundService(app, Intent(app, ShadowsocksConnection.serviceClass))
     fun reloadService() = app.sendBroadcast(Intent(Action.RELOAD).setPackage(app.packageName))
     fun stopService() = app.sendBroadcast(Intent(Action.CLOSE).setPackage(app.packageName))
+
+    fun isExternalAccessAllowed(): Boolean {
+        if (DataStore.publicStore.getBoolean(Key.externalAccessAlways) == true) return true
+        val until = DataStore.publicStore.getLong(Key.externalAccessUntil) ?: 0L
+        return until > System.currentTimeMillis()
+    }
+
+    fun allowExternalAccessOnce() {
+        val until = System.currentTimeMillis() + externalAccessAllowWindowMs
+        DataStore.publicStore.putLong(Key.externalAccessUntil, until)
+        DataStore.publicStore.putBoolean(Key.externalAccessAlways, false)
+        updateExternalAccessCollection(true)
+    }
+
+    fun allowExternalAccessAlways() {
+        DataStore.publicStore.putBoolean(Key.externalAccessAlways, true)
+        DataStore.publicStore.putLong(Key.externalAccessUntil, 0L)
+        updateExternalAccessCollection(true)
+    }
+
+    fun updateExternalAccessCollection(enabled: Boolean) {
+        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(enabled)
+        FirebaseAnalytics.getInstance(app).setAnalyticsCollectionEnabled(enabled)
+    }
+
+    fun requestExternalAccess(reason: String): Boolean {
+        if (isExternalAccessAllowed()) return true
+        val now = System.currentTimeMillis()
+        val last = DataStore.publicStore.getLong(Key.externalAccessLastPrompt) ?: 0L
+        if (now - last < externalAccessPromptIntervalMs) return false
+        DataStore.publicStore.putLong(Key.externalAccessLastPrompt, now)
+        val allowOnceIntent = PendingIntent.getBroadcast(app, 0,
+            Intent(Action.EXTERNAL_ALLOW_ONCE).setPackage(app.packageName), PendingIntent.FLAG_IMMUTABLE)
+        val allowAlwaysIntent = PendingIntent.getBroadcast(app, 1,
+            Intent(Action.EXTERNAL_ALLOW_ALWAYS).setPackage(app.packageName), PendingIntent.FLAG_IMMUTABLE)
+        val accessNotification = NotificationCompat.Builder(app, "external-access")
+            .setWhen(0)
+            .setSmallIcon(R.drawable.ic_service_active)
+            .setContentTitle(app.getString(R.string.external_access_title))
+            .setContentText(reason)
+            .setOngoing(false)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .addAction(R.drawable.ic_navigation_close, app.getString(R.string.external_access_allow_once), allowOnceIntent)
+            .addAction(R.drawable.ic_navigation_close, app.getString(R.string.external_access_allow_always), allowAlwaysIntent)
+            .build()
+        notification.notify(externalAccessNotificationId, accessNotification)
+        return false
+    }
 }

@@ -24,6 +24,7 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.github.shadowsocks.Core
 import com.github.shadowsocks.Core.app
 import com.github.shadowsocks.core.R
 import com.github.shadowsocks.preference.DataStore
@@ -80,6 +81,10 @@ class HttpsTest : ViewModel() {
     fun testConnection() {
         cancelTest()
         status.value = Status.Testing
+        if (!Core.requestExternalAccess(app.getString(R.string.external_access_reason_test))) {
+            status.value = Status.Error.IOFailure(IOException(app.getString(R.string.external_access_reason_test)))
+            return
+        }
         val url = URL("https://cp.cloudflare.com")
         val conn = url.openConnection(DataStore.proxy) as HttpURLConnection
         conn.setRequestProperty("Connection", "close")

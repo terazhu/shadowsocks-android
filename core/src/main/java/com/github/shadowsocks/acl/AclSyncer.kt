@@ -35,6 +35,7 @@ import androidx.work.WorkerParameters
 import com.github.shadowsocks.Core
 import com.github.shadowsocks.Core.app
 import com.github.shadowsocks.core.BuildConfig
+import com.github.shadowsocks.core.R
 import com.github.shadowsocks.preference.DataStore
 import com.github.shadowsocks.utils.useCancellable
 import kotlinx.coroutines.Dispatchers
@@ -67,15 +68,18 @@ class AclSyncer(context: Context, workerParams: WorkerParameters) : CoroutineWor
         }
     }
 
-    override suspend fun doWork(): Result = try {
-        val route = inputData.getString(KEY_ROUTE)!!
-        val connection = URL("https://shadowsocks.org/acl/android/v1/$route.acl")
-            .openConnection(DataStore.proxy) as HttpURLConnection
-        val acl = connection.useCancellable { inputStream.bufferedReader().use { it.readText() } }
-        Acl.getFile(route).printWriter().use { it.write(acl) }
-        Result.success()
-    } catch (e: IOException) {
-        Timber.d(e)
-        if (runAttemptCount > 5) Result.failure() else Result.retry()
+    override suspend fun doWork(): Result {
+        return try {
+            if (!Core.requestExternalAccess(app.getString(R.string.external_access_reason_acl))) return Result.retry()
+            val route = inputData.getString(KEY_ROUTE)!!
+            val connection = URL("https://shadowsocks.org/acl/android/v1/$route.acl")
+                .openConnection(DataStore.proxy) as HttpURLConnection
+            val acl = connection.useCancellable { inputStream.bufferedReader().use { it.readText() } }
+            Acl.getFile(route).printWriter().use { it.write(acl) }
+            Result.success()
+        } catch (e: IOException) {
+            Timber.d(e)
+            if (runAttemptCount > 5) Result.failure() else Result.retry()
+        }
     }
 }

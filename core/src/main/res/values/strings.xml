@@ -68,6 +68,7 @@
   <string name="service_vpn">VPN Service</string>
   <string name="service_proxy">Proxy Service</string>
   <string name="service_transproxy">Transproxy Service</string>
+  <string name="service_floating">Floating icon</string>
   <string name="forward_success">Shadowsocks started.</string>
   <string name="service_failed">Failed to connect the remote server</string>
   <string name="stop">Stop</string>
@@ -82,6 +83,16 @@
   <string name="proxy_empty">Proxy/Password should not be empty</string>
   <string name="connect">Connect</string>
   <string name="floating_mode">Floating mode</string>
+  <string name="floating_notification">Floating icon is running</string>
+  <string name="external_access_title">External access blocked</string>
+  <string name="external_access_allow_once">Allow once</string>
+  <string name="external_access_allow_always">Always allow</string>
+  <string name="external_access_reason_acl">ACL update needs network access</string>
+  <string name="external_access_reason_subscription">Subscription update needs network access</string>
+  <string name="external_access_reason_import_url">Rule import needs network access</string>
+  <string name="external_access_reason_crash">Crash reporting needs network access</string>
+  <string name="external_access_reason_analytics">Analytics needs network access</string>
+  <string name="external_access_reason_test">Connectivity test needs network access</string>
   <string name="summary">Summary</string>
   <string name="summary_total">Total: ↑%1$s ↓%2$s</string>
   <string name="summary_sessions">Sessions: %1$d</string>

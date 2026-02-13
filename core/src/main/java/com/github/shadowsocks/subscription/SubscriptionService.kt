@@ -80,6 +80,10 @@ class SubscriptionService : Service(), CoroutineScope {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!Core.requestExternalAccess(getString(R.string.external_access_reason_subscription))) {
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         if (worker == null) {
             idle.value = false
             if (!receiverRegistered) {
@@ -139,6 +143,7 @@ class SubscriptionService : Service(), CoroutineScope {
     }
 
     private fun fetchJsonAsync(url: URL, max: Int, notification: NotificationCompat.Builder) = async(Dispatchers.IO) {
+        if (!Core.requestExternalAccess(getString(R.string.external_access_reason_subscription))) return@async null
         val tempFile = File.createTempFile("subscription-", ".json", cacheDir)
         try {
             (url.openConnection() as HttpURLConnection).useCancellable {

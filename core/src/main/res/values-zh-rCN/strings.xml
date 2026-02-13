@@ -70,6 +70,16 @@
     <string name="profile_empty">"请选择配置文件"</string>
     <string name="proxy_empty">"代理服务器地址及密码不能为空"</string>
     <string name="connect">"连接"</string>
+    <string name="floating_notification">"悬浮图标正在运行"</string>
+    <string name="external_access_title">"已阻止外部联网"</string>
+    <string name="external_access_allow_once">"允许一次"</string>
+    <string name="external_access_allow_always">"始终允许"</string>
+    <string name="external_access_reason_acl">"更新 ACL 规则需要联网"</string>
+    <string name="external_access_reason_subscription">"更新订阅需要联网"</string>
+    <string name="external_access_reason_import_url">"导入规则需要联网"</string>
+    <string name="external_access_reason_crash">"崩溃上报需要联网"</string>
+    <string name="external_access_reason_analytics">"统计上报需要联网"</string>
+    <string name="external_access_reason_test">"连通性测试需要联网"</string>
 
     <!-- menu category -->
     <string name="profiles">"配置文件"</string>

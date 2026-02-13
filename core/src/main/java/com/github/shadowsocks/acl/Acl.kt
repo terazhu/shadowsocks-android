@@ -23,6 +23,7 @@ package com.github.shadowsocks.acl
 import android.content.Context
 import androidx.recyclerview.widget.SortedList
 import com.github.shadowsocks.Core
+import com.github.shadowsocks.core.R
 import com.github.shadowsocks.net.Subnet
 import com.github.shadowsocks.utils.BaseSorter
 import com.github.shadowsocks.utils.URLSorter
@@ -152,6 +153,9 @@ class Acl {
     } catch (_: IOException) { this }
 
     suspend fun flatten(depth: Int, connect: suspend (URL) -> URLConnection): Acl {
+        if (urls.size() > 0 && !Core.requestExternalAccess(Core.app.getString(R.string.external_access_reason_import_url))) {
+            return this
+        }
         if (depth > 0) for (url in urls.asIterable()) {
             val child = Acl().fromReader(connect(url).also {
                 (it as? HttpURLConnection)?.instanceFollowRedirects = true
