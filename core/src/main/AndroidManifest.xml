@@ -21,7 +21,7 @@
     </queries>
 
     <application
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_launcher_connect"
         android:allowBackup="true"
         android:enableOnBackInvokedCallback="true"
         android:extractNativeLibs="true"

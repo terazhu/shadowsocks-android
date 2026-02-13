@@ -23,11 +23,14 @@ package com.github.shadowsocks
 import android.content.ActivityNotFoundException
 import android.os.Bundle
 import android.os.RemoteException
+import android.provider.Settings
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.net.Uri
+import android.content.Intent
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabColorSchemeParams
@@ -63,6 +66,7 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
 
     // UI
     private lateinit var fab: ServiceButton
+    private lateinit var floatingMode: View
     private lateinit var stats: StatsBar
     internal lateinit var drawer: DrawerLayout
     private lateinit var navigation: NavigationView
@@ -166,6 +170,8 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         fab = findViewById(R.id.fab)
         fab.initProgress(findViewById(R.id.fabProgress))
         fab.setOnClickListener { toggle() }
+        floatingMode = findViewById(R.id.floatingMode)
+        floatingMode.setOnClickListener { enterFloatingMode() }
         ViewCompat.setOnApplyWindowInsetsListener(fab) { view, insets ->
             view.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 bottomMargin = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom +
@@ -177,6 +183,9 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         changeState(BaseService.State.Idle, animate = false)    // reset everything to init state
         connection.connect(this, this)
         DataStore.publicStore.registerChangeListener(this)
+        if (savedInstanceState == null) {
+            enterFloatingMode()
+        }
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
@@ -191,6 +200,15 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
     private fun displayFragment(fragment: ToolbarFragment) {
         supportFragmentManager.beginTransaction().replace(R.id.fragment_holder, fragment).commitAllowingStateLoss()
         drawer.closeDrawers()
+    }
+
+    private fun enterFloatingMode() {
+        if (Settings.canDrawOverlays(this)) {
+            startService(Intent(this, FloatingIconService::class.java))
+            moveTaskToBack(true)
+        } else {
+            startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+        }
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean {
@@ -210,6 +228,7 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                     return true
                 }
                 R.id.customRules -> displayFragment(CustomRulesFragment())
+                R.id.summary -> displayFragment(SummaryFragment())
                 R.id.subscriptions -> displayFragment(SubscriptionFragment())
                 else -> return false
             }

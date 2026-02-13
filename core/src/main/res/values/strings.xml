@@ -81,6 +81,20 @@
   <string name="profile_empty">Please select a profile</string>
   <string name="proxy_empty">Proxy/Password should not be empty</string>
   <string name="connect">Connect</string>
+  <string name="floating_mode">Floating mode</string>
+  <string name="summary">Summary</string>
+  <string name="summary_total">Total: ↑%1$s ↓%2$s</string>
+  <string name="summary_sessions">Sessions: %1$d</string>
+  <string name="summary_countries">Countries: %1$s</string>
+  <string name="summary_domains">Addresses: %1$d</string>
+  <string name="summary_ips">IPs: %1$d</string>
+  <string name="summary_active">Active: %1$s</string>
+  <string name="summary_last_session">Last: %1$s</string>
+  <string name="summary_section_apps">Apps</string>
+  <string name="summary_section_domains">Addresses</string>
+  <string name="summary_section_countries">Countries</string>
+  <string name="summary_section_ips">IPs</string>
+  <string name="summary_unknown_country">Unknown</string>
 
   <!-- menu category -->
   <string name="profiles">Profiles</string>
