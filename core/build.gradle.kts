@@ -1,4 +1,6 @@
 import com.android.build.gradle.internal.tasks.factory.dependsOn
+import java.io.File
+import org.gradle.api.tasks.Exec
 
 plugins {
     id("com.android.library")
@@ -56,6 +58,17 @@ cargo {
     ))
     exec = { spec, toolchain ->
         run {
+            val cargoBin = File(System.getenv("HOME") ?: "", ".cargo/bin")
+            if (cargoBin.isDirectory) {
+                val currentPath = System.getenv("PATH") ?: ""
+                if (!currentPath.split(File.pathSeparator).contains(cargoBin.absolutePath)) {
+                    spec.environment("PATH", cargoBin.absolutePath + File.pathSeparator + currentPath)
+                }
+                val rustcPath = File(cargoBin, "rustc")
+                if (rustcPath.isFile) {
+                    spec.environment("RUSTC", rustcPath.absolutePath)
+                }
+            }
             try {
                 Runtime.getRuntime().exec(arrayOf("python3", "-V"))
                 spec.environment("RUST_ANDROID_GRADLE_PYTHON_COMMAND", "python3")
@@ -74,6 +87,30 @@ cargo {
             spec.environment("RUST_ANDROID_GRADLE_CC_LINK_ARG", "-Wl,-z,max-page-size=16384,-soname,lib$libname.so")
             spec.environment("RUST_ANDROID_GRADLE_LINKER_WRAPPER_PY", "$projectDir/$module/../linker-wrapper.py")
             spec.environment("RUST_ANDROID_GRADLE_TARGET", "target/${toolchain.target}/$profile/lib$libname.so")
+        }
+    }
+}
+
+val rustcBinDir = File(System.getenv("HOME") ?: "", ".cargo/bin")
+if (rustcBinDir.isDirectory) {
+    val rustcPath = File(rustcBinDir, "rustc")
+    tasks.configureEach {
+        if (name.startsWith("cargoBuild") && this is Exec) {
+            val currentPath = System.getenv("PATH") ?: ""
+            if (!currentPath.split(File.pathSeparator).contains(rustcBinDir.absolutePath)) {
+                environment("PATH", rustcBinDir.absolutePath + File.pathSeparator + currentPath)
+            }
+            if (rustcPath.isFile) {
+                environment("RUSTC", rustcPath.absolutePath)
+            }
+        }
+    }
+    if (rustcPath.isFile) {
+        tasks.matching { it.name.startsWith("cargoBuild") }.configureEach {
+            val method = javaClass.methods.firstOrNull { it.name == "setRustcCommand" && it.parameterTypes.size == 1 }
+            if (method != null) {
+                method.invoke(this, rustcPath.absolutePath)
+            }
         }
     }
 }
