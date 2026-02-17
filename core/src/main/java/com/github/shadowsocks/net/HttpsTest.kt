@@ -90,20 +90,28 @@ class HttpsTest : ViewModel() {
                 AppLog.logError("HttpsTest", proxyError!!, e)
             }
 
-            if (Core.isExternalAccessAllowed() && proxyElapsed != null) {
-                AppLog.logInfo("HttpsTest", "Testing direct connection (no proxy)...")
-                try {
-                    directElapsed = withContext(Dispatchers.IO) {
-                        testWithProxy(Proxy.NO_PROXY)
-                    }
-                    AppLog.logInfo("HttpsTest", "Direct test: ${directElapsed}ms")
-                } catch (e: IOException) {
-                    AppLog.logWarn("HttpsTest", "Direct test failed: ${e.message}")
-                } catch (e: Exception) {
-                    AppLog.logWarn("HttpsTest", "Direct test error: ${e.message}")
+            if (proxyElapsed != null) {
+                val directAllowed = Core.isExternalAccessAllowed()
+                if (!directAllowed) {
+                    AppLog.logInfo("HttpsTest", "Requesting external access for direct test...")
+                    Core.requestExternalAccess(app.getString(R.string.external_access_reason_test))
                 }
-            } else {
-                AppLog.logInfo("HttpsTest", "Skipping direct test (external access not allowed or proxy failed)")
+                
+                if (Core.isExternalAccessAllowed()) {
+                    AppLog.logInfo("HttpsTest", "Testing direct connection (no proxy)...")
+                    try {
+                        directElapsed = withContext(Dispatchers.IO) {
+                            testWithProxy(Proxy.NO_PROXY)
+                        }
+                        AppLog.logInfo("HttpsTest", "Direct test: ${directElapsed}ms")
+                    } catch (e: IOException) {
+                        AppLog.logWarn("HttpsTest", "Direct test failed: ${e.message}")
+                    } catch (e: Exception) {
+                        AppLog.logWarn("HttpsTest", "Direct test error: ${e.message}")
+                    }
+                } else {
+                    AppLog.logInfo("HttpsTest", "Direct test skipped: external access not authorized")
+                }
             }
 
             status.value = when {
