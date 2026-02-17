@@ -83,13 +83,8 @@ class HttpsTest : ViewModel() {
         cancelTest()
         status.value = Status.Testing
         AppLog.logInfo("HttpsTest", "Starting connectivity test...")
-        if (!Core.requestExternalAccess(app.getString(R.string.external_access_reason_test))) {
-            AppLog.logError("HttpsTest", "External access denied for connectivity test")
-            status.value = Status.Error.IOFailure(IOException(app.getString(R.string.external_access_reason_test)))
-            return
-        }
+        AppLog.logInfo("HttpsTest", "Connecting to cp.cloudflare.com via proxy: ${DataStore.proxy}")
         val url = URL("https://cp.cloudflare.com")
-        AppLog.logInfo("HttpsTest", "Connecting to $url via proxy: ${DataStore.proxy}")
         val conn = url.openConnection(DataStore.proxy) as HttpURLConnection
         conn.setRequestProperty("Connection", "close")
         conn.instanceFollowRedirects = false
