@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.Proxy
@@ -74,28 +75,35 @@ class HttpsTest : ViewModel() {
             var proxyElapsed: Long? = null
             var directElapsed: Long? = null
             var proxyError: String? = null
-            var directError: String? = null
 
             AppLog.logInfo("HttpsTest", "Testing via proxy: ${DataStore.proxy}")
             try {
-                proxyElapsed = testWithProxy(DataStore.proxy)
+                proxyElapsed = withContext(Dispatchers.IO) {
+                    testWithProxy(DataStore.proxy)
+                }
                 AppLog.logInfo("HttpsTest", "Proxy test: ${proxyElapsed}ms")
             } catch (e: IOException) {
                 proxyError = "Proxy test failed: ${e.message}"
                 AppLog.logError("HttpsTest", proxyError!!, e)
+            } catch (e: Exception) {
+                proxyError = "Proxy test error: ${e.message}"
+                AppLog.logError("HttpsTest", proxyError!!, e)
             }
 
-            if (Core.isExternalAccessAllowed()) {
+            if (Core.isExternalAccessAllowed() && proxyElapsed != null) {
                 AppLog.logInfo("HttpsTest", "Testing direct connection (no proxy)...")
                 try {
-                    directElapsed = testWithProxy(Proxy.NO_PROXY)
+                    directElapsed = withContext(Dispatchers.IO) {
+                        testWithProxy(Proxy.NO_PROXY)
+                    }
                     AppLog.logInfo("HttpsTest", "Direct test: ${directElapsed}ms")
                 } catch (e: IOException) {
-                    directError = "Direct test failed: ${e.message}"
-                    AppLog.logWarn("HttpsTest", directError!!)
+                    AppLog.logWarn("HttpsTest", "Direct test failed: ${e.message}")
+                } catch (e: Exception) {
+                    AppLog.logWarn("HttpsTest", "Direct test error: ${e.message}")
                 }
             } else {
-                AppLog.logInfo("HttpsTest", "Skipping direct test (external access not allowed)")
+                AppLog.logInfo("HttpsTest", "Skipping direct test (external access not allowed or proxy failed)")
             }
 
             status.value = when {
