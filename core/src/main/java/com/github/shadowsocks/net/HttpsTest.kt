@@ -1,23 +1,3 @@
-/*******************************************************************************
- *                                                                             *
- *  Copyright (C) 2018 by Max Lv <max.c.lv@gmail.com>                          *
- *  Copyright (C) 2018 by Mygod Studio <contact-shadowsocks-android@mygod.be>  *
- *                                                                             *
- *  This program is free software: you can redistribute it and/or modify       *
- *  it under the terms of the GNU General Public License as published by       *
- *  the Free Software Foundation, either version 3 of the License, or          *
- *  (at your option) any later version.                                        *
- *                                                                             *
- *  This program is distributed in the hope that it will be useful,            *
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of             *
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the              *
- *  GNU General Public License for more details.                               *
- *                                                                             *
- *  You should have received a copy of the GNU General Public License          *
- *  along with this program. If not, see <http://www.gnu.org/licenses/>.       *
- *                                                                             *
- *******************************************************************************/
-
 package com.github.shadowsocks.net
 
 import android.os.Build
@@ -29,19 +9,16 @@ import com.github.shadowsocks.Core.app
 import com.github.shadowsocks.AppLog
 import com.github.shadowsocks.core.R
 import com.github.shadowsocks.preference.DataStore
-import com.github.shadowsocks.utils.useCancellable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.Proxy
 import java.net.URL
 import java.net.URLConnection
 
-/**
- * Based on: https://android.googlesource.com/platform/frameworks/base/+/b19a838/services/core/java/com/android/server/connectivity/NetworkMonitor.java#1071
- */
 class HttpsTest : ViewModel() {
     sealed class Status {
         protected abstract val status: CharSequence
@@ -53,8 +30,18 @@ class HttpsTest : ViewModel() {
         data object Testing : Status() {
             override val status get() = app.getText(R.string.connection_test_testing)
         }
-        class Success(private val elapsed: Long) : Status() {
-            override val status get() = app.getString(R.string.connection_test_available, elapsed)
+        class Success(
+            private val proxyElapsed: Long,
+            private val directElapsed: Long? = null
+        ) : Status() {
+            override val status: CharSequence
+                get() = if (directElapsed != null) {
+                    val overhead = proxyElapsed - directElapsed
+                    val overheadStr = if (overhead >= 0) "+${overhead}ms" else "${overhead}ms"
+                    app.getString(R.string.connection_test_available_with_overhead, proxyElapsed, directElapsed, overheadStr)
+                } else {
+                    app.getString(R.string.connection_test_available, proxyElapsed)
+                }
         }
         sealed class Error : Status() {
             override val status get() = app.getText(R.string.connection_test_fail)
@@ -83,28 +70,66 @@ class HttpsTest : ViewModel() {
         cancelTest()
         status.value = Status.Testing
         AppLog.logInfo("HttpsTest", "Starting connectivity test...")
-        AppLog.logInfo("HttpsTest", "Connecting to cp.cloudflare.com via proxy: ${DataStore.proxy}")
+        running = GlobalScope.launch(Dispatchers.Main.immediate) {
+            var proxyElapsed: Long? = null
+            var directElapsed: Long? = null
+            var proxyError: String? = null
+            var directError: String? = null
+
+            AppLog.logInfo("HttpsTest", "Testing via proxy: ${DataStore.proxy}")
+            try {
+                proxyElapsed = testWithProxy(DataStore.proxy)
+                AppLog.logInfo("HttpsTest", "Proxy test: ${proxyElapsed}ms")
+            } catch (e: IOException) {
+                proxyError = "Proxy test failed: ${e.message}"
+                AppLog.logError("HttpsTest", proxyError!!, e)
+            }
+
+            if (Core.isExternalAccessAllowed()) {
+                AppLog.logInfo("HttpsTest", "Testing direct connection (no proxy)...")
+                try {
+                    directElapsed = testWithProxy(Proxy.NO_PROXY)
+                    AppLog.logInfo("HttpsTest", "Direct test: ${directElapsed}ms")
+                } catch (e: IOException) {
+                    directError = "Direct test failed: ${e.message}"
+                    AppLog.logWarn("HttpsTest", directError!!)
+                }
+            } else {
+                AppLog.logInfo("HttpsTest", "Skipping direct test (external access not allowed)")
+            }
+
+            status.value = when {
+                proxyElapsed != null -> {
+                    if (directElapsed != null) {
+                        val overhead = proxyElapsed - directElapsed
+                        AppLog.logInfo("HttpsTest", "Proxy overhead: ${overhead}ms (proxy: ${proxyElapsed}ms, direct: ${directElapsed}ms)")
+                    }
+                    Status.Success(proxyElapsed, directElapsed)
+                }
+                proxyError != null -> Status.Error.IOFailure(IOException(proxyError))
+                else -> Status.Error.IOFailure(IOException("Unknown error"))
+            }
+        }
+    }
+
+    private fun testWithProxy(proxy: Proxy): Long {
         val url = URL("https://cp.cloudflare.com")
-        val conn = url.openConnection(DataStore.proxy) as HttpURLConnection
+        val conn = url.openConnection(proxy) as HttpURLConnection
         conn.setRequestProperty("Connection", "close")
         conn.instanceFollowRedirects = false
         conn.useCaches = false
-        running = GlobalScope.launch(Dispatchers.Main.immediate) {
-            status.value = conn.useCancellable {
-                try {
-                    val start = SystemClock.elapsedRealtime()
-                    val code = responseCode
-                    val elapsed = SystemClock.elapsedRealtime() - start
-                    AppLog.logInfo("HttpsTest", "Response code: $code, elapsed: ${elapsed}ms")
-                    if (code == 204 || code == 200 && responseLength == 0L) Status.Success(elapsed)
-                    else Status.Error.UnexpectedResponseCode(code)
-                } catch (e: IOException) {
-                    AppLog.logError("HttpsTest", "Connection failed: ${e.message}", e)
-                    Status.Error.IOFailure(e)
-                } finally {
-                    disconnect()
-                }
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        return try {
+            val start = SystemClock.elapsedRealtime()
+            val code = conn.responseCode
+            val elapsed = SystemClock.elapsedRealtime() - start
+            if (code != 204 && !(code == 200 && conn.responseLength == 0L)) {
+                throw IOException("Unexpected response code: $code")
             }
+            elapsed
+        } finally {
+            conn.disconnect()
         }
     }
 

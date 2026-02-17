@@ -109,6 +109,7 @@
   <string name="log">Log</string>
   <string name="clear">Clear</string>
   <string name="refresh">Refresh</string>
+  <string name="connection_test_available_with_overhead">HTTPS handshake: %1$dms (direct: %2$dms, overhead: %3$s)</string>
 
   <!-- menu category -->
   <string name="profiles">Profiles</string>
