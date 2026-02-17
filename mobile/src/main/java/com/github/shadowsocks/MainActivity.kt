@@ -241,6 +241,7 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
                 }
                 R.id.customRules -> displayFragment(CustomRulesFragment())
                 R.id.summary -> displayFragment(SummaryFragment())
+                R.id.log -> displayFragment(LogFragment())
                 R.id.subscriptions -> displayFragment(SubscriptionFragment())
                 else -> return false
             }

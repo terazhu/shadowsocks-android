@@ -33,6 +33,7 @@ import androidx.core.os.bundleOf
 import com.github.shadowsocks.BootReceiver
 import com.github.shadowsocks.Core
 import com.github.shadowsocks.Core.app
+import com.github.shadowsocks.AppLog
 import com.github.shadowsocks.acl.Acl
 import com.github.shadowsocks.aidl.IShadowsocksService
 import com.github.shadowsocks.aidl.IShadowsocksServiceCallback
@@ -361,6 +362,7 @@ object BaseService {
             }
 
             data.changeState(State.Connecting)
+            AppLog.logInfo("BaseService", "Connecting to profile: ${profile.formattedName}")
             data.connectingJob = GlobalScope.launch(Dispatchers.Main.immediate) {
                 try {
                     Executable.killAll()    // clean up old processes
@@ -377,6 +379,7 @@ object BaseService {
 
                     data.processes = GuardedProcessPool {
                         Timber.w(it)
+                        AppLog.logError("BaseService", "Process error: ${it.readableMessage}", it)
                         stopRunner(false, it.readableMessage)
                     }
                     startProcesses()
@@ -384,11 +387,13 @@ object BaseService {
                     data.proxy!!.scheduleUpdate()
                     data.udpFallback?.scheduleUpdate()
 
+                    AppLog.logInfo("BaseService", "Connected successfully")
                     data.changeState(State.Connected)
                 } catch (_: CancellationException) {
                     // if the job was cancelled, it is canceller's responsibility to call stopRunner
                 } catch (exc: Throwable) {
                     if (exc is ExpectedException) Timber.d(exc) else Timber.w(exc)
+                    AppLog.logError("BaseService", "Connection failed: ${exc.readableMessage}", exc)
                     stopRunner(false, "${getString(R.string.service_failed)}: ${exc.readableMessage}")
                 } finally {
                     data.connectingJob = null

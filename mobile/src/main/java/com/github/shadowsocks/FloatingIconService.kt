@@ -192,6 +192,7 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
         this.state = state
         hasError = msg != null
         if (state == BaseService.State.Connecting || state == BaseService.State.Connected) hasError = false
+        AppLog.logInfo("FloatingIcon", "State changed: $state, profile: $profileName, error: $msg")
         updateIcon()
         when (state) {
             BaseService.State.Connected -> startSessionTracking()
@@ -200,6 +201,7 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
                 endSessionTracking()
                 updateStats()
                 if (msg != null) {
+                    AppLog.logError("FloatingIcon", "VPN stopped with error: $msg")
                     openMainWithError(msg)
                 }
             }

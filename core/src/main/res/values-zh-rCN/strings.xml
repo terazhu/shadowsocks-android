@@ -80,6 +80,9 @@
     <string name="external_access_reason_crash">"崩溃上报需要联网"</string>
     <string name="external_access_reason_analytics">"统计上报需要联网"</string>
     <string name="external_access_reason_test">"连通性测试需要联网"</string>
+    <string name="log">"日志"</string>
+    <string name="clear">"清空"</string>
+    <string name="refresh">"刷新"</string>
 
     <!-- menu category -->
     <string name="profiles">"配置文件"</string>

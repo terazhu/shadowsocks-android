@@ -26,6 +26,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.github.shadowsocks.Core
 import com.github.shadowsocks.Core.app
+import com.github.shadowsocks.AppLog
 import com.github.shadowsocks.core.R
 import com.github.shadowsocks.preference.DataStore
 import com.github.shadowsocks.utils.useCancellable
@@ -81,11 +82,14 @@ class HttpsTest : ViewModel() {
     fun testConnection() {
         cancelTest()
         status.value = Status.Testing
+        AppLog.logInfo("HttpsTest", "Starting connectivity test...")
         if (!Core.requestExternalAccess(app.getString(R.string.external_access_reason_test))) {
+            AppLog.logError("HttpsTest", "External access denied for connectivity test")
             status.value = Status.Error.IOFailure(IOException(app.getString(R.string.external_access_reason_test)))
             return
         }
         val url = URL("https://cp.cloudflare.com")
+        AppLog.logInfo("HttpsTest", "Connecting to $url via proxy: ${DataStore.proxy}")
         val conn = url.openConnection(DataStore.proxy) as HttpURLConnection
         conn.setRequestProperty("Connection", "close")
         conn.instanceFollowRedirects = false
@@ -96,9 +100,11 @@ class HttpsTest : ViewModel() {
                     val start = SystemClock.elapsedRealtime()
                     val code = responseCode
                     val elapsed = SystemClock.elapsedRealtime() - start
+                    AppLog.logInfo("HttpsTest", "Response code: $code, elapsed: ${elapsed}ms")
                     if (code == 204 || code == 200 && responseLength == 0L) Status.Success(elapsed)
                     else Status.Error.UnexpectedResponseCode(code)
                 } catch (e: IOException) {
+                    AppLog.logError("HttpsTest", "Connection failed: ${e.message}", e)
                     Status.Error.IOFailure(e)
                 } finally {
                     disconnect()

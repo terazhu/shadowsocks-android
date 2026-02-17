@@ -14,6 +14,9 @@
         <item android:id="@+id/summary"
               android:title="@string/summary"
               android:icon="@drawable/ic_device_data_usage"/>
+        <item android:id="@+id/log"
+              android:title="@string/log"
+              android:icon="@drawable/ic_action_assignment"/>
         <item android:id="@+id/globalSettings"
               android:title="@string/settings"
               android:icon="@drawable/ic_action_settings"/>

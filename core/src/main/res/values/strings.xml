@@ -106,6 +106,9 @@
   <string name="summary_section_countries">Countries</string>
   <string name="summary_section_ips">IPs</string>
   <string name="summary_unknown_country">Unknown</string>
+  <string name="log">Log</string>
+  <string name="clear">Clear</string>
+  <string name="refresh">Refresh</string>
 
   <!-- menu category -->
   <string name="profiles">Profiles</string>
