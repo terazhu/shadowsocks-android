@@ -199,10 +199,21 @@ class FloatingIconService : Service(), ShadowsocksConnection.Callback {
                 lastStats = TrafficStats()
                 endSessionTracking()
                 updateStats()
+                if (msg != null) {
+                    openMainWithError(msg)
+                }
             }
             else -> {}
         }
         updateStats()
+    }
+
+    private fun openMainWithError(errorMsg: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            putExtra("error_msg", errorMsg)
+        }
+        startActivity(intent)
     }
 
     override fun trafficUpdated(profileId: Long, stats: TrafficStats) {

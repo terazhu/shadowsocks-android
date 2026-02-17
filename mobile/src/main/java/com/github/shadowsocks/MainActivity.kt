@@ -186,6 +186,16 @@ class MainActivity : AppCompatActivity(), ShadowsocksConnection.Callback, OnPref
         if (savedInstanceState == null) {
             enterFloatingMode()
         }
+        intent?.getStringExtra("error_msg")?.let { errorMsg ->
+            snackbar(getString(R.string.vpn_error, errorMsg)).show()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra("error_msg")?.let { errorMsg ->
+            snackbar(getString(R.string.vpn_error, errorMsg)).show()
+        }
     }
 
     override fun onPreferenceDataStoreChanged(store: PreferenceDataStore, key: String) {
